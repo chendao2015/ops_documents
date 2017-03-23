@@ -3,7 +3,7 @@
 0 说明{
 
 		手册制作：忘情
-		更新日期：2017-03-22
+		更新日期：2017-03-23
 		
 		欢迎加入“shell/python运维开发群”，QQ群号：323779636
 		
@@ -515,6 +515,59 @@
 			}
 		}
 	
+		软件编译{
+			编译需要编译环境，开发环境，开发库，开发工具。常用的编译环境有c、c++、perl、java、python5种
+			c环境的编译器：gcc（GNU C Complier）
+			c++环境的编译器：g++
+			make：c、c++的统一项目管理工具，编译时有可能调用gcc也有可能调用g++。使用makefile文件定义make按何种次序去编译源程序文件中的源程序
+			automake：生成makefile.in，makefile.in此时不能直接用make进行编译，但它可以接受autoconf工具生成的脚本configure进行配置，结合makefile.in最终生成可使用make进程编译的makefile文件
+			autoconf：给项目生成脚本文件configure（配置当前程序如何编译的一个脚本工具）
+			
+			configure脚本的功能{
+				让用户选定编译特性
+				检查编译环境是否符合程序编译的基本需要
+			}
+			
+			软件编译安装的步骤{
+				./configure{
+					--help
+					--prefix=/path/to/somewhere		#指定程序安装位置
+					--sysconfdir=/path/to/conffile_path		#指定配置文件存放路径，若不指定此项，则安装的配置文件将放在--prefix指定的路径下的conf或etc路径下
+				}
+				make test	#有时此步可省略
+				make
+				make install
+			}
+			
+			编译安装注意事项{
+				a) 如果安装时不是使用的默认路径，则必须修改PATH环境变量，以能够识别此程序的二进制文件路径{
+					修改/etc/profile文件或在/etc/profile.d/目录建立一个以.sh为后缀的文件，在里面定义export PATH=$PATH:/path/to/somewhere
+				}
+				b) 默认情况下，系统搜索库文件的路径只有/lib，/usr/lib{
+					增添额外库文件搜索路径方法{
+						在/etc/ld.so.conf.d/中创建以.conf为后缀名的文件，而后把要增添的路径直接写至此文件中。此时库文件增添的搜索路径重启后有效，若要使用增添的路径立即生效则要使用ldconfig命令
+					}
+					
+					ldconfig：通知系统重新搜索库文件{
+						配置文件：/etc/ld.so.conf和/etc/ls.so.conf.d/*.conf
+						缓存文件：/etc/ld.so.cache
+						
+						-v：显示重新搜索库的过程
+						-p：打印出系统启动时自动加载并缓存到内存中的可用库文件名及文件路径映射关系						
+					}				
+				}
+				c) 头文件：输出给系统{
+					默认：系统在/usr/include中找头文件，若要增添头文件搜索路径，使用链接进行
+				}
+				d) man文件路径：安装在--prefix指定的目录下的man目录{
+					默认：系统在/usr/share/man中找man文件。此时因为编译安装的时候不是安装到默认路径下，如果要查找man文件可以使用两种方法{
+						man -M /path/to/man_dir command
+						在/etc/man.config文件中添加一条MANPATH
+					}
+				}			
+			}		
+		}
+		
 	}
 }
 
@@ -1134,8 +1187,307 @@
 }
 
 10 软件管理{
-
-
+	获取软件包的途径{
+		系统发行版的光盘或官方的服务器{
+			http://mirrors.aliyun.com
+			http://mirrors.sohu.com
+			http://mirrors.163.com
+		}
+		项目官方站点
+		第三方组织{
+			Fedora-EPEL（推荐）
+			搜索引擎{
+				http://pkgs.org
+				http://rpmfind.net
+				http://rpm.pbone.net
+			}
+		}
+		自己制作
+	}
+	
+	软件包管理器的功能{
+		将二进制程序，库文件，配置文件，帮助文件打包成一个文件；
+		安装软件时按需将二进制文件，库文件，配置文件，帮助文件放到相应的位置；
+		生成数据库，追踪所安装的每一个文件；
+		软件卸载时根据安装时生成的数据库将对应的文件删除
+	}
+	软件包管理器的核心功能{
+		制作软件包
+		安装、卸载、升级、查询、校验
+	}
+	
+	软件包管理{
+		程序的组成清单（每个包独有）{
+			文件清单
+			安装或卸载时运行的脚本
+		}
+		数据库（公共）{
+			程序包名称及版本
+			依赖关系
+			功能说明
+			安装生成的各文件的文件路径及校验码信息
+		}
+	}
+	
+	常用的软件包管理工具{
+		前端工具{
+			yum
+			apt-get
+			zypper（suse上的rpm前端管理工具）
+			dnf（Fedora 22+ rpm前端管理工具）
+		}
+		后端工具{
+			rpm
+			dpt
+		}
+		前端工具是依赖于后端工具的，前端工具是为了自动解决后端工具的依赖关系而存在的
+	}
+	
+	rpm包命名{
+		rpm包的组成部分{
+			主包：bind-9.7.1-1.el5.i586.rpm
+			子包：bind-libs-9.7.1-1.el5.i586.rpm    bind-utils-9.7.1-1.el5.i586.rpm
+			包名格式{
+				name-version-release-arch.rpm
+				bind-major.minor.release-release.arch.rpm
+				{
+					major（主版本号）：重大改进
+					minor（次版本号）：某个子功能发生重大变化
+					release（发行号）：修正了部分bug，调整了一点功能
+					常见的arch{
+						x86：i386，i486，i586，i686
+						x86_64：x64，x86_64，amd64
+						powerpc：ppc
+						跟平台无关：noarch
+					}
+				}
+			}
+		}
+	}
+	
+	rpm包分类{
+		二进制格式（编译好的，装上就可以使用）{
+			rpm包作者下载源程序，编译配置完成后，制作成rpm包{
+				有些特性是编译时选定的，如果编译时未选定此特性，将无法使用
+				rpm包的版本会落后于源码包，甚至落后很多
+			}
+		}
+		源码格式（需要编译，也叫定制）{
+			命名方式：name-VERSION.tar.gz{
+				VERSION：major.minor.release
+			}
+		}
+	}
+	
+	rpm{
+		rpm：管理软件包。 rpm有一个强大的数据库：/var/lib/rpm
+		
+		rpm的管理操作包括软件的安装、卸载、升级、查询、校验、重建数据库、验证软件包来源合法性等等
+		
+		安装{
+			rpm -ivh /PATH/TO/PACKAGE_FILE ...
+			可用子选项{
+				--test：测试安装，但不真正执行安装过程
+				--nodeps：忽略依赖关系
+				--replacepkgs：重新安装，替换原有安装
+				--oldpackage：降级
+				--force：强行安装，可以实现重装或降级
+				--nodigest：不检查包的完整性
+				--nosignature：不检查包的来源合法性
+				--noscripts：不执行程序包脚本片断{
+					%pre：安装前脚本    --nopre
+					%post：安装后脚本    --nopost
+					%preun：卸载前脚本    --nopreun
+					%postun：卸载后脚本    --nopostun
+				}
+			}
+		}
+		
+		升级{
+			rpm -Uvh /PATH/TO/NEW_PACKAGE_FILE：如果装有老版本的，则升级；否则，则安装
+			rpm -Fvh /PATH/TO/NEW_PACKAGE_FILE：如果装有老版本的，则升级；否则，退出{
+				--oldpackage：降级
+			}
+			注意事项{
+				a) 不要对内核做升级操作{
+					Linux支持多内核版本并存，因此，可直接安装新版本内核
+				}
+				b) 如果原程序包的配置文件安装后曾被修改，升级时，新版本提供的同一个配置文件并不会直接覆盖老版本的配置文件，而是把新版本的文件重命名（FILENAME.rpmnew）后保留
+			}
+		}
+		
+		卸载{
+			如果其他包依赖于要卸载的包，这个被依赖的包是无法卸载的，除非强制卸载，强制卸载后依赖于这个包的其他程序将无法正常工作
+			rpm -e PACKAGE_NAME
+		}
+		
+		查询{
+			rpm -q PACKAGE_NAME：查询指定的包是否已安装
+		
+			查询已安装的包{
+				rpm -qa：查询已经安装的所有包
+				rpm -qi PACKAGE_NAME：查询指定包的说明信息
+				rpm -ql PACKAGE_NAME：查询指定软件包安装后生成的文件列表
+				rpm -qf /path/to/somefile：查询指定的文件是由哪个rpm包安装生成的
+				rpm -qc PACKAGE_NAME：查询指定包安装的配置文件
+				rpm -qd PACKAGE_NAME：查询指定包安装的帮助文件
+				rpm -q --scripts PACKAGE_NAME：查询指定包中包含的脚本
+				rpm -q --whatprovides CAPABILITY：查询指定的CAPABILITY（能力）由哪个包所提供{
+					如：rpm -q --whatprovides /bin/cat
+				}
+				rpm -q --whatrequires CAPABILITY：查询指定的CAPABILITY被哪个包所依赖
+				rpm -q --changelog COMMAND：查询COMMAND的制作日志
+				rpm -q --scripts PACKAGE_NAME：查询指定软件包包含的所有脚本文件
+				rpm -qR PACKAGE_NAME：查询指定的软件包所依赖的CAPABILITY
+				rpm -q --provides PACKAGE_NAME：列出指定软件包所提供的CAPABILITY
+			}
+			
+			查询未安装的包{
+				rpm -qpi /PATH/TO/PACKAGE_FILE：查询指定未安装包的说明信息
+			}
+		}
+		
+		校验{
+			如果执行以下命令无内容输出说明此包未被修改过
+			rpm -V PACKAGE_NAME
+		}
+		
+		重建数据库{
+			数据库信息在/var/lib/rpm目录中
+			rpm --rebuilddb：重建数据库，一定会重新建立
+			rpm --initdb：初始化数据库，没有才建立，有就不用建立
+		}
+		
+		检查来源合法性及软件完整性{
+			加密类型{
+				对称加密：加密解密使用同一个密钥
+				公钥加密：一对密钥，公钥和私钥。公钥隐含于私钥中，可以提取出来并公布出去
+				单向加密：只能加密不能解密
+			}
+			红帽官方公钥{/etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release
+				rpm -k PACKAGE_FILE：检查指定包有无密钥信息{
+					dsa，gpg：验证来源合法性，也即验证签名。可以使用--nosignatrue略过此项
+					sha1，md5：验证软件包完整性。可以使用--nodigest略过此项
+				}
+				rpm --import /etc/pki/rpm-gpg/RPM-GPG-KEY-redhat-release：导入密钥文件
+				CentOS 7发行版光盘提供的密钥文件：RPM-GPG-KEY-CentOS-7
+			}
+		}	
+	}
+	
+	yum{Yellowdog Update Manager
+		yum的功能：自动解决各rpm包之间的依赖关系
+		yum的缺陷：如果在未完成安装的情况下强行中止安装过程，下次再安装时将无法解决依赖关系（dnf可解决此问题）
+		
+		yum仓库中的元数据文件{repodata目录
+			primary.xml.gz{
+				当前仓库所有RPM包的列表
+				依赖关系
+				每个RPM包安装生成的文件列表
+			}
+			filelists.xml.gz{
+				当前仓库中所有RPM包的所有文件列表
+			}
+			other.xml.gz{
+				额外信息，RPM包的修改日志
+			}
+			repomd.xml{
+				记录的是primary.xml.gz、filelists.xml.gz、other.xml.gz这三个文件的时间戳和校验和
+			}
+			comps*.xml{
+				RPM包分组信息
+			}
+		}
+		
+		yum的配置文件{
+			/etc/yum.conf：为所有仓库提供公共配置
+			/etc/yum.repos.d/*.repo：为仓库的指向提供配置{
+				tolerant：容错功能，1为开启，0为关闭，当设为0时，如果用yum安装多个软件包且其中某个软件包已经安装过就会报错；当设为1时，当要安装的软件已经安装时自动忽略
+				exactarch：严格检查平台类型与版本
+				plugins：是否使用yum插件
+			}
+			
+			yum的repo配置文件中可用的变量{
+				$releaseversion：当前OS的发行版的主版本号
+				$arch：平台类型
+				$basearch：基础平台
+				$YUM0-$YUM9
+			}
+			
+			repo文件{
+				[Repo_Name]：仓库名称
+				name：描述信息
+				baseurl：仓库的具体路径，接受以下三种类型{
+					ftp://
+					http://
+					file:///
+				}
+				enabled：可选值｛1｜0｝，1为启用此仓库，0为禁用此仓库
+				gpgcheck：可选值｛1｜0｝，1为检查软件包来源合法性，0为不检查来源{
+					如果gpgcheck设为1，则必须用gpgkey定义密钥文件的具体路径
+				}
+				gpgkey=/PATH/TO/KEY
+			}
+			
+			yum命令使用{
+				语法{
+					yum [options] [command] [package ...]
+				}
+				options{
+					--nogpgcheck：如果从网上下载包有时会检查gpgkey，此时可以使用此命令跳过gpgkey的检查
+					-y：自动回答为"yes"
+					-q：静默模式，安装时不输出信息至标准输出
+					--disablerepo=repoidglob：临时禁用此处指定的repo
+					--enablerepo=repoidglob：临时启用此处指定的repo
+					--noplugins：禁用所有插件
+				}
+				command{
+					list：列表{
+						all：默认项
+						available：列出仓库中有的，但尚未安装的所有可用的包
+						installed：列出已经安装的包
+						updates：可用的升级
+					}
+					clean：清理缓存{
+						packages
+						headers
+						metadata
+						dbcache
+						all
+					}
+					repolist：显示repo列表及其简要信息{
+						all
+						enabled：默认项
+						disabled
+					}
+					install：安装{
+						yum install packages [...]
+					}
+					update：升级{
+						yum update packages [...]
+					}
+					update_to：升级为指定版本
+					downgrade package1 [package2 ...]：降级
+					remove|erase：卸载
+					info：显示rpm -qi package的结果{
+						yum info packages
+					}
+					provides|whatprovides：查看指定的文件或特性是由哪个包安装生成的
+					search string1 [string2 ...]：以指定的关键字搜索程序包名及summary信息
+					deplist package [package2 ...]：显示指定包的依赖关系
+					history：查看yum的历史事务信息
+					localinstall：安装本地rpm包，自动解决依赖关系
+				}
+			}
+			
+		}
+	
+	}
+	
+	createrepo{创建yum仓库的元数据信息
+		yum install createrepo -y
+		createrepo [options] <directory>
+	}
 }
 
 11 进程守护{
