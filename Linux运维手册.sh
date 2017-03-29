@@ -400,14 +400,34 @@
 	内核{
 		内核设计风格{
 			单内核：把所有功能全部做进内核。不论哪个模块损坏都会影响到整个系统的正常工作。引用微内核的模块化设计{
-				linux是单内核的，linux中的线程被称作轻量级进程(LWP)。内核由核心与内核模块组成
-				核心：/boot/vmlinuz-version
-				内核模块：ko（kernel object）动态加载外围内核模块，/lib/modules/内核版本号命名的目录
+				linux是单内核的，linux中的线程被称作轻量级进程(LWP)。
 			}
 			微内核：只有一个核心，把所有功能做成子系统，需要用到哪个功能就去调度这个子系统。看起来更安全，某个子系统损坏不影响其他子系统工作。{
 				windows，solaris是微内核的，微内核是真正意义上的支持线程的
 			}
 			ldd：显示共享库依赖关系
+		}
+		内核的组成部分{
+			核心：/boot/vmlinuz-version
+			ramdisk：基于内存的磁盘，是一个本地回环文件，把文件当成磁盘使用。系统启动时会被自动装入内存
+				用于动态生成微型根文件系统，加载硬盘驱动，切换根文件系统等
+				在centos5中ramdisk模拟成硬盘，而在centos6和centos7中ramdisk是模拟成文件系统的。
+				CentOS5：/boot/initrd-VERSION-release.img
+				CentOS6：/boot/initramfs-VERSION-release.img
+				initrd或initramfs文件生成{
+					生成工具{
+						CentOS5：mkinitrd
+						CentOS6：mkinitrd，dracut
+					}
+					mkinitrd initrd文件路径 内核版本号{
+						mkinitrd /boot/initrd-`uname -r`.img `uname -r`
+					}
+				}
+			内核模块：ko（kernel object）动态加载外围内核模块，/lib/modules/内核版本号命名的目录
+		}
+		Linux内核特点{
+			支持模块化：.ko
+			支持模块的动态装载和卸载
 		}
 		内核模块管理{
 			lsmod：显示当前系统中有哪些内核模块
