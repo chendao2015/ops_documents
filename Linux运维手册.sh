@@ -418,9 +418,19 @@
 					生成工具{
 						CentOS5：mkinitrd
 						CentOS6：mkinitrd，dracut
+						CentOS7：dracut
 					}
-					mkinitrd initrd文件路径 内核版本号{
+					mkinitrd 生成的initrd文件存放路径 内核版本号{
 						mkinitrd /boot/initrd-`uname -r`.img `uname -r`
+					}
+					dracut 生成的initrd文件存放路径 内核版本号{
+						dracut /boot/initrd-`uname -r`.img `uname -r`
+					}
+					展开系统中的initrd文件至当前目录{
+						zcat /boot/initrd-version.img | cpio -id
+					}
+					修改好init脚本以后重新压缩initrd文件{
+						find . |cpio -H newc --quiet -o | gzip -9 >/path/to/initrd.gz
 					}
 				}
 			内核模块：ko（kernel object）动态加载外围内核模块，/lib/modules/内核版本号命名的目录
@@ -430,7 +440,7 @@
 			支持模块的动态装载和卸载
 		}
 		内核模块管理{
-			lsmod：显示当前系统中有哪些内核模块
+			lsmod：显示当前系统中已装载的内核模块
 			insmod /PATH/TO/MODULE_FILE：装载某模块
 			rmmod MOD_NAME：卸载某模块
 			modprobe{模块管理工具
@@ -449,14 +459,25 @@
 			c) 编译进内核
 		}
 	
-		用户空间访问、监控内核的方式{	通过查看或修改/proc、/sys目录中的某些文件来访问、监控、设定内核参数
+		用户空间访问、监控内核的方式{
+			内核把自己内部状态信息、统计信息及可配置参数通过proc伪文件系统加以输出
+			通过查看或修改/proc、/sys目录中的某些文件来访问、监控、设定内核参数
+			参数{
+				只读参数：用于输出信息
+				可写参数：可接受用户指定的“新值”来实现对内核某功能或特性的配置
+			}
 			/proc/sys：此目录中的很多文件是可读写的{
 				echo 1 > /proc/sys/vm/drop_caches表示清除page cache
 				echo 2 > /proc/sys/vm/drop_caches表示清除回收slab分配器中的对象（包括目录项缓存和inode缓存）
 				echo 3 > /proc/sys/vm/drop_caches表示清除page cache和slab分配器中的缓存对象
 				slab分配器是内核中管理内存的一种机制，其中很多缓存数据实现都是用的page cache
 			}
-			/sys：此目录中的某些文件是可写的
+			/sys：{
+				输出内核识别出的各硬件设备的相关属性信息，也有内核对硬件特性的设定信息。有些参数是可以修改的，用于调整硬件工作特性
+				udev通过/sys目录下输出的信息动态为各设备创建所需要的设备文件
+				udev是运行在用户空间的程序，其专用工具有udevadmin和hotplug
+				udev为设备创建设备文件时会读取其事先定义好的规则文件，一般在/etc/udev/rules.d及/usr/lib/udev/rules.d目录下
+			}
 		}
 	
 		设定内核参数值的方法{
@@ -477,16 +498,36 @@
 	
 	编译{
 		内核编译{
+			前提{
+				a) 准备好开发环境
+				b) 获取目标主机上硬件设备的相关信息{
+					    CPU：
+                                cat /proc/cpuinfo    查看CPU相关信息
+                                x86info（需要另行安装此包yum install x86info）
+                                lscpu
+                        PCI设备：
+                                lspci
+                                lsusb
+                                lsblk
+                        了解全部硬件设备信息：
+                                hal-device
+				}
+				c) 获取目标主机系统功能的相关系统，例如要启用的文件系统等
+				d) 获取内核源代码包
+			}
 			a) 安装编译、开发环境（yum -y groupinstall "development libraries" "development tools"）
 			b) 下载内核文件（www.kernel.org）
 			c) 解压内核至/usr/src下并链接为/usr/src/linux
 			d) 拷贝/boot/config-version文件至/usr/src/linux/.config
-			e) 进入/usr/src/linux目录中执行make menuconfig命令
-			f) 执行make命令
+			e) 进入/usr/src/linux目录中执行make menuconfig命令，然后执行screen命令
+			f) 执行make命令{
+				-j #：多线程编译，#可以与cpu内核数相同，也可以是cpu内核数的2倍，还可以小于cpu内核数
+			}
 			g) 执行make bzImage命令生成内核文件vmlinuz
 			h) 执行make modules命令编译模块
 			i) 执行make modules_install命令安装内核模块
-			j) 执行make install命令
+			j) 执行make install命令，此命令执行成功后会将新的内核title自动添加入/boot/grub/grub.cfg文件中
+			k) 重启系统并测试使用新内核
 			
 			内核模块安装位置：/lib/modules/KERNEL_VERSION/
 		}
@@ -770,6 +811,7 @@
 		-n #：指定周期长度，单位为秒，默认为2秒
 		格式：watch -n # 'COMMAND'
 	}
+	
 	
 }
 
